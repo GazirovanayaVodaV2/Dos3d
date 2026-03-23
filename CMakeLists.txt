@@ -8,6 +8,7 @@ add_compile_options(-Wall -std=gnu99 -save-temps)
 file(GLOB sources CONFIGURE_DEPENDS "src/*.c" "src/*.cpp" "src/*.h" "src/**/*.c" "src/**/*.cpp" "src/**/*.h" )
 
 add_executable(main ${sources})
+target_link_libraries(main PRIVATE m)
 
 add_custom_target(assets
     COMMAND ${CMAKE_COMMAND} -E copy_directory

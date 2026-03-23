@@ -19,8 +19,8 @@ vec3 normalize(vec3 a) {
 	return (vec3) {a.x / len, a.y / len, a.z / len};
 }
 
-vec3 project(vec3 p) {
-	return (vec3) {
+vec2f project(vec3 p) {
+	return (vec2f) {
 			p.x / p.z,
-			p.y / p.z, 0};
+			p.y / p.z};
 }

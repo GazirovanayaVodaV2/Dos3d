@@ -7,33 +7,42 @@
 #define GDB_IMPLEMENTATION
 #include "gdbstub.h"
 
-void set_video_mode(int mode) {
-	__dpmi_regs regs = {0};
-	regs.x.ax = mode;
-	__dpmi_int(0x10, &regs);
+#include "graphics/graphics.h"
+
+vec3 triangle_vertex_test(vec3 point, const void *uniforms) {
+	return point;
+}
+
+byte triangle_fragment_test(u32 pixel, const void *uniforms) {
+	return 15;
 }
 
 int main(void) {
 	gdb_start();
-	set_video_mode(0x13);
+
+
+	init_graphics();
+
+	vertex_buffer triangle;
+	triangle.len = 3;
+	triangle.points = (vec3[]) {
+			{-0.5, 0, 1},
+			{0, 0.5, 1},
+			{0.5, 0, 1},
+	};
+
+	shader_program triangle_program = gc_create_shader_program(triangle_vertex_test, NULL, triangle_fragment_test, NULL);
+
+	gc_bind_buffer(&triangle);
+	gc_bind_shader_program(&triangle_program);
 
 	while (!kbhit()) {
-		__djgpp_nearptr_enable();
-		unsigned char *vram = (unsigned char *) (__djgpp_conventional_base + 0xa0000);
-		for (int i = 0; i < 200; i++) {
-			int x = rand() % 320;
-			int y = rand() % 200;
-			int color = rand() % 255;
-			vram[x + y * 320] = color;
-		}
-		__djgpp_nearptr_disable();
+		gc_render_buffer();
+		gc_swap_buffer();
 
-		// Set a GDB checkpoint, needed to receive interrupt commands
-		// from the debugger. You should do this in all your game loops.
 		gdb_checkpoint();
 	}
 
-	// Return to text mode
-	set_video_mode(0x3);
+	quit_graphics();
 	return 0;
 }

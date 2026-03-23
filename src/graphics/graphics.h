@@ -11,29 +11,19 @@
 #define VRAM_W 320
 #define VRAM_H 200
 
+#define TEXT_MODE 0x3
+#define VIDEO_MODE 0x13
+
+void set_video_mode(int mode);
+
 typedef struct vertex_buffer {
 	vec3 *points;
 	size_t len;
-	byte primary_color;
 } vertex_buffer;
 
-typedef struct vshader_result {
-	vec3 point;
-	const void *uniforms
-} vshader_result;
 
-typedef struct fshader_result {
-	byte color;
-	const void *uniforms;
-} fshader_result;
-
-typedef struct render_result {
-	vshader_result m_vres;
-	fshader_result m_fres;
-} render_result;
-
-typedef vshader_result (*vertex_shader)(vec3 point, const void *uniforms);
-typedef fshader_result (*fragment_shader)(u32 pixel, const void *uniforms);
+typedef vec3 (*vertex_shader)(vec3 point, const void *uniforms);
+typedef byte (*fragment_shader)(u32 pixel, const void *uniforms);
 
 typedef struct shader_program {
 	vertex_shader m_vshader;
@@ -47,16 +37,21 @@ typedef struct graphic_context {
 	byte double_buffer[VRAM_SIZE];
 
 	vertex_buffer *current_vbuffer;
-	shader_program program;
+	const shader_program *current_program;
 } graphic_context;
 
-graphic_context init_graphics();
+extern graphic_context global_graphic_context;
 
-void gc_bind_buffer(graphic_context *self, vertex_buffer *buffer);
-void gc_create_shader_program(graphic_context *self, vertex_shader vshader, fragment_shader fshader);
+void init_graphics();
+void quit_graphics();
 
-void gc_render_buffer(graphic_context *self);
+void gc_bind_buffer(vertex_buffer *buffer);
+shader_program gc_create_shader_program(vertex_shader vshader, void *vuniforms,
+										fragment_shader fshader, void *funiforms);
+void gc_bind_shader_program(const shader_program *program);
 
-void gc_swap_buffer(graphic_context *self);
+void gc_render_buffer();
+
+void gc_swap_buffer();
 
 #endif
