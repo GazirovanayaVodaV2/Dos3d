@@ -3,6 +3,7 @@
 #include <sys/nearptr.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <conio.h>
 
 #define GDB_IMPLEMENTATION
 #include "gdbstub.h"
@@ -18,8 +19,11 @@ byte triangle_fragment_test(u32 pixel, const void *uniforms) {
 }
 
 int main(void) {
-	gdb_start();
-
+	printf("Press 1 to start debug");
+	if (getch() == '1') {
+		putchar('\n');
+		gdb_start();
+	}
 
 	init_graphics();
 
@@ -27,7 +31,7 @@ int main(void) {
 	triangle.len = 3;
 	triangle.points = (vec3[]) {
 			{-0.5, 0, 1},
-			{0, 0.5, 1},
+			{0, 0.25, 1},
 			{0.5, 0, 1},
 	};
 

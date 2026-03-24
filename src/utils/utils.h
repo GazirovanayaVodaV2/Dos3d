@@ -7,6 +7,16 @@
 #define KiB(val) (val * 1024)
 #define MiB(val) KiB(val * 1024)
 
+#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) (a > b ? a : b)
+
+#define SWAP(buffer, i1, i2)                      \
+	do {                                          \
+		__typeof__(buffer[i1]) temp = buffer[i1]; \
+		buffer[i1] = buffer[i2];                  \
+		buffer[i2] = temp;                        \
+	} while (0)
+
 typedef uint8_t byte;
 typedef uint8_t u8;
 typedef int8_t i8;

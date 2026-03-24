@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <bios.h>
 #include <dpmi.h>
+#include <stdbool.h>
 #include "../utils/utils.h"
 #include "../vec3/vec3.h"
 
@@ -41,6 +42,23 @@ typedef struct graphic_context {
 } graphic_context;
 
 extern graphic_context global_graphic_context;
+
+typedef struct line_params {
+	const int xdist;
+	const int absolutexdist;
+	const int ydist;
+	const int absoluteydist;
+	const bool isvertical;
+	const bool ishorizontal;
+	const float deltaX;
+	const float deltaY;
+	const i8 xdir;
+	const i8 ydir;
+} line_params;
+
+line_params get_line_params(const vec2i begin, const vec2i end);
+
+void draw_line(const vec2i begin, const vec2i end, const byte color);
 
 void init_graphics();
 void quit_graphics();
