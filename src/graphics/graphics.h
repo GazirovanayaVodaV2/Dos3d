@@ -22,7 +22,6 @@ typedef struct vertex_buffer {
 	size_t len;
 } vertex_buffer;
 
-
 typedef vec3 (*vertex_shader)(vec3 point, const void *uniforms);
 typedef byte (*fragment_shader)(u32 pixel, const void *uniforms);
 

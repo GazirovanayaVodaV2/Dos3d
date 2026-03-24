@@ -180,12 +180,14 @@ void gc_render_buffer() {
 			points[i].y = (u16) roundf(projected_point.y);
 		}
 
-		for (int i = 0; i < point_count; i++) {
+		/*for (int i = 0; i < point_count; i++) {
 			u32 screen_point = get_index(points[i]);
 
 			byte fcolor = global_graphic_context.current_program->m_fshader(screen_point, global_graphic_context.current_program->m_funiforms);
-			draw_triangle(points[0], points[1], points[2], fcolor);
-		}
+		}*/
+		//temp solution
+		byte fcolor = global_graphic_context.current_program->m_fshader(get_index(points[0]), global_graphic_context.current_program->m_funiforms);
+		draw_triangle(points[0], points[1], points[2], fcolor);
 	}
 }
 void gc_swap_buffer() {
