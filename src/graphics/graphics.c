@@ -117,7 +117,35 @@ void draw_line(const vec2i begin, const vec2i end, const byte color) {
 	}
 }
 
-static void draw_triangle(const vec2i v1, const vec2i v2, const vec2i v3, const byte color) {
+static void draw_line_shaded(const vec2i begin, const vec2i end, const shader_program *sprogram) {
+	const line_params params = get_line_params(begin, end);
+
+	if (params.isvertical) {
+		for (int i = 0; i <= params.absoluteydist; i++) {
+			u32 pixel_i = get_index((vec2i) {begin.x, begin.y + i * params.ydir});
+			byte color = sprogram->m_fshader(pixel_i, sprogram->m_funiforms);
+			set_pixeli(pixel_i, color);
+		}
+		return;
+	} else if (params.ishorizontal) {
+		for (int i = 0; i <= params.absolutexdist; i++) {
+			u32 pixel_i = get_index((vec2i) {begin.x + i * params.xdir, begin.y});
+			byte color = sprogram->m_fshader(pixel_i, sprogram->m_funiforms);
+			set_pixeli(pixel_i, color);
+		}
+		return;
+	} else {
+		float weight = 0.0f;
+		for (int i = 0; i <= params.absolutexdist; i++) {
+			weight += params.deltaY;
+			u32 pixel_i = get_index((vec2i) {begin.x + i * params.xdir, (int) roundf(begin.y + weight)});
+			byte color = sprogram->m_fshader(pixel_i, sprogram->m_funiforms);
+			set_pixeli(pixel_i, color);
+		}
+	}
+}
+
+static void draw_triangle(const vec2i v1, const vec2i v2, const vec2i v3, const shader_program *sprogram) {
 	vec2i verts[3] = {v1, v2, v3};
 	//sorting by y
 	if (verts[0].y > verts[1].y) {
@@ -148,31 +176,34 @@ static void draw_triangle(const vec2i v1, const vec2i v2, const vec2i v3, const 
 			bottom_w += from_middle_to_bottom.deltaX;
 			bottom_line_pixel = (vec2i) {(int) roundf(middle.x + bottom_w), middle.y + sec_iter * from_middle_to_bottom.ydir};
 
-			draw_line(longest_line_pixel, bottom_line_pixel, color);
+			draw_line_shaded(longest_line_pixel, bottom_line_pixel, sprogram);
 			sec_iter++;
 		} else {
 			is_reached_middle = iter == from_top_to_middle.absoluteydist;
 
 			middle_w += from_top_to_middle.deltaX;
 			middle_line_pixel = (vec2i) {(int) roundf(top.x + middle_w), top.y + iter * from_top_to_middle.ydir};
-			draw_line(longest_line_pixel, middle_line_pixel, color);
+			draw_line_shaded(longest_line_pixel, middle_line_pixel, sprogram);
 		}
-	}
+	}//m_fshader(u32 coord, global_graphic_context.current_program->m_funiforms);
 }
 
 void gc_render_buffer() {
 	if (global_graphic_context.current_vbuffer && global_graphic_context.current_program->m_vshader && global_graphic_context.current_program->m_fshader) {
 		size_t point_count = global_graphic_context.current_vbuffer->len;
+		u16 stride = global_graphic_context.current_vbuffer->stride;
 
 		vec2i points[point_count];
 		for (int i = 0; i < point_count; i++) {
 
 			vec3 point = global_graphic_context.current_vbuffer->points[i];
 			vec3 vpoint = global_graphic_context.current_program->m_vshader(point, global_graphic_context.current_program->m_vuniforms);
-			vpoint.x = (vpoint.x + 1) / 2.0f;
-			vpoint.y = (vpoint.y + 1) / 2.0f;
 
 			vec2f projected_point = project(vpoint);
+
+			projected_point.x = (projected_point.x + 1) / 2.0f;
+			projected_point.y = (projected_point.y + 1) / 2.0f;
+
 			projected_point.y = 1.0f - projected_point.y;
 			projected_point.x *= VRAM_W;
 			projected_point.y *= VRAM_H;
@@ -180,14 +211,9 @@ void gc_render_buffer() {
 			points[i].y = (u16) roundf(projected_point.y);
 		}
 
-		/*for (int i = 0; i < point_count; i++) {
-			u32 screen_point = get_index(points[i]);
-
-			byte fcolor = global_graphic_context.current_program->m_fshader(screen_point, global_graphic_context.current_program->m_funiforms);
-		}*/
-		//temp solution
-		byte fcolor = global_graphic_context.current_program->m_fshader(get_index(points[0]), global_graphic_context.current_program->m_funiforms);
-		draw_triangle(points[0], points[1], points[2], fcolor);
+		for (int i = 0; i < point_count - 3; i += stride) {
+			draw_triangle(points[i], points[1 + i], points[2 + i], global_graphic_context.current_program);
+		}
 	}
 }
 void gc_swap_buffer() {

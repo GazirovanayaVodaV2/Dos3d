@@ -7,12 +7,12 @@
 
 typedef number matrix[16];
 
-void madd(matrix *res, matrix *self, matrix *m_ref);
-void msub(matrix *res, matrix *self, matrix *m_ref);
+void madd(matrix *res, const matrix self, const matrix m_ref);
+void msub(matrix *res, const matrix self, const matrix m_ref);
 
-void mmult(matrix *res, matrix *self, matrix *m_ref);
-vec3 mmult_vec(matrix *self, vec3 vec);
+void mmult(matrix *res, const matrix self, const matrix m_ref);
+vec3 mmult_vec(const matrix self, const vec3 vec);
 void midentity(matrix *self);
-void mtranslate(matrix *self, vec3 vec);
+void mtranslate(matrix *self, const vec3 vec);
 
 #endif

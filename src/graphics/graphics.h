@@ -20,6 +20,7 @@ void set_video_mode(int mode);
 typedef struct vertex_buffer {
 	vec3 *points;
 	size_t len;
+	u16 stride;
 } vertex_buffer;
 
 typedef vec3 (*vertex_shader)(vec3 point, const void *uniforms);

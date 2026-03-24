@@ -1,37 +1,37 @@
 #include "matrix.h"
 
-void madd(matrix *res, matrix *self, matrix *m_ref) {
+void madd(matrix *res, const matrix self, const matrix m_ref) {
 	for (int i = 0; i < 16; i++) {
-		(*res)[i] = (*self)[i] + (*m_ref)[i];
+		(*res)[i] = self[i] + m_ref[i];
 	}
 }
 
-void msub(matrix *res, matrix *self, matrix *m_ref) {
+void msub(matrix *res, const matrix self, const matrix m_ref) {
 	for (int i = 0; i < 16; i++) {
-		(*res)[i] = (*self)[i] - (*m_ref)[i];
+		(*res)[i] = self[i] - m_ref[i];
 	}
 }
 
-void mmult(matrix *res, matrix *self, matrix *m_ref) {
+void mmult(matrix *res, const matrix self, const matrix m_ref) {
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			(*res)[i * 4 + j] =
-					(*self)[i * 4 + 0] * (*m_ref)[0 * 4 + j] +
-					(*self)[i * 4 + 1] * (*m_ref)[1 * 4 + j] +
-					(*self)[i * 4 + 2] * (*m_ref)[2 * 4 + j] +
-					(*self)[i * 4 + 3] * (*m_ref)[3 * 4 + j];
+					self[i * 4 + 0] * m_ref[0 * 4 + j] +
+					self[i * 4 + 1] * m_ref[1 * 4 + j] +
+					self[i * 4 + 2] * m_ref[2 * 4 + j] +
+					self[i * 4 + 3] * m_ref[3 * 4 + j];
 		}
 	}
 }
 
-vec3 mmult_vec(matrix *m, vec3 v) {
+vec3 mmult_vec(const matrix m, vec3 v) {
 
 	vec3 res;
 	float w;
-	res.x = v.x * (*m)[0] + v.y * (*m)[4] + v.z * (*m)[8] + (*m)[12];
-	res.y = v.x * (*m)[1] + v.y * (*m)[5] + v.z * (*m)[9] + (*m)[13];
-	res.z = v.x * (*m)[2] + v.y * (*m)[6] + v.z * (*m)[10] + (*m)[14];
-	w = v.x * (*m)[3] + v.y * (*m)[7] + v.z * (*m)[11] + (*m)[15];
+	res.x = v.x * (m)[0] + v.y * (m)[4] + v.z * (m)[8] + (m)[12];
+	res.y = v.x * (m)[1] + v.y * (m)[5] + v.z * (m)[9] + (m)[13];
+	res.z = v.x * (m)[2] + v.y * (m)[6] + v.z * (m)[10] + (m)[14];
+	w = v.x * (m)[3] + v.y * (m)[7] + v.z * (m)[11] + (m)[15];
 
 	if (w != 1.0f && w != 0.0f) {
 		res.x /= w;
