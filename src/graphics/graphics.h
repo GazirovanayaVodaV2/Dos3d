@@ -1,6 +1,7 @@
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <bios.h>
 #include <dpmi.h>
@@ -17,14 +18,36 @@
 
 void set_video_mode(int mode);
 
+typedef struct vertex_t {
+	vec3 point;
+	vec2f uv;
+} vertex_t;
+
+typedef struct projected_vectex_t {
+	vec2i point;
+	number z;
+	vec2f uv;
+} projected_vectex_t;
+
 typedef struct vertex_buffer {
-	vec3 *points;
+	vertex_t *points;
 	size_t len;
 	u16 stride;
 } vertex_buffer;
 
-typedef vec3 (*vertex_shader)(vec3 point, const void *uniforms);
-typedef byte (*fragment_shader)(u32 pixel, const void *uniforms);
+typedef struct texture {
+	byte *pixels;
+	byte w, h;
+} texture;
+
+typedef struct data_for_fragment_shader {
+	vec2f uv[3];
+	number w1, w2, w3;
+} data_for_fragment_shader;
+
+typedef vertex_t (*vertex_shader)(vertex_t v, const void *uniforms);
+typedef byte (*fragment_shader)(data_for_fragment_shader *data,
+								u32 pixel, const void *uniforms);
 
 typedef struct shader_program {
 	vertex_shader m_vshader;
@@ -36,6 +59,7 @@ typedef struct shader_program {
 typedef struct graphic_context {
 	byte *vram;
 	byte double_buffer[VRAM_SIZE];
+	number Zbuffer[VRAM_SIZE];
 
 	vertex_buffer *current_vbuffer;
 	const shader_program *current_program;
@@ -71,5 +95,15 @@ void gc_bind_shader_program(const shader_program *program);
 void gc_render_buffer();
 
 void gc_swap_buffer();
+
+void get_barycentric(const vec2i v1, const vec2i v2, const vec2i v3, const vec2i p,
+					 number *w1, number *w2, number *w3);
+
+byte sample_texture(const vec2f uv1, const vec2f uv2, const vec2f uv3,
+					float w1, float w2, float w3,
+					const texture *txt);
+
+texture load_texture(const char *path);
+void destroy_texture(texture *self);
 
 #endif

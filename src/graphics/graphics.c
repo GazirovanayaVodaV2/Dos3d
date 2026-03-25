@@ -1,10 +1,14 @@
+#include <stddef.h>
+#include <stdio.h>
 #include <sys/nearptr.h>
-#include "graphics.h"
-#include "stdbool.h"
-#include "stdlib.h"
+#include <stdbool.h>
+#include <stdlib.h>
+#include <conio.h>
 #include <math.h>
 
+#include "graphics.h"
 #include "../vec3/vec3.h"
+#include "float.h"
 #include "string.h"
 
 graphic_context global_graphic_context;
@@ -24,6 +28,11 @@ void init_graphics() {
 
 	global_graphic_context.current_vbuffer = NULL;
 	global_graphic_context.current_program = NULL;
+
+	/*for (int i = 0; i < VRAM_SIZE; i++) {
+		global_graphic_context.Zbuffer[i] = FLT_MAX;
+	}*/
+	memset(global_graphic_context.Zbuffer, 0.0f, VRAM_SIZE * sizeof(number));
 }
 
 void quit_graphics() {
@@ -117,48 +126,96 @@ void draw_line(const vec2i begin, const vec2i end, const byte color) {
 	}
 }
 
-static void draw_line_shaded(const vec2i begin, const vec2i end, const shader_program *sprogram) {
+static void draw_line_shaded(const vec2i begin, const vec2i end, const shader_program *sprogram,
+							 const projected_vectex_t v1, const projected_vectex_t v2, const projected_vectex_t v3) {
 	const line_params params = get_line_params(begin, end);
-
+	data_for_fragment_shader data;
+	data.uv[0] = v1.uv;
+	data.uv[1] = v2.uv;
+	data.uv[2] = v3.uv;
 	if (params.isvertical) {
 		for (int i = 0; i <= params.absoluteydist; i++) {
-			u32 pixel_i = get_index((vec2i) {begin.x, begin.y + i * params.ydir});
-			byte color = sprogram->m_fshader(pixel_i, sprogram->m_funiforms);
-			set_pixeli(pixel_i, color);
+			vec2i p = (vec2i) {begin.x, begin.y + i * params.ydir};
+			u32 pixel_i = get_index(p);
+
+			get_barycentric(v1.point, v2.point, v3.point, p, &data.w1, &data.w2, &data.w3);
+			number current_z = v1.z * data.w1 + v2.z * data.w2 + v3.z * data.w3;
+			if (current_z > 0.01f) {
+				current_z = 1.0f / current_z;
+				if (current_z > global_graphic_context.Zbuffer[pixel_i]) {
+					global_graphic_context.Zbuffer[pixel_i] = current_z;
+					byte color = sprogram->m_fshader(&data, pixel_i, sprogram->m_funiforms);
+					set_pixeli(pixel_i, color);
+				}
+			}
 		}
 		return;
 	} else if (params.ishorizontal) {
 		for (int i = 0; i <= params.absolutexdist; i++) {
-			u32 pixel_i = get_index((vec2i) {begin.x + i * params.xdir, begin.y});
-			byte color = sprogram->m_fshader(pixel_i, sprogram->m_funiforms);
-			set_pixeli(pixel_i, color);
+			vec2i p = (vec2i) {begin.x + i * params.xdir, begin.y};
+			u32 pixel_i = get_index(p);
+
+			get_barycentric(v1.point, v2.point, v3.point, p, &data.w1, &data.w2, &data.w3);
+			number current_z = v1.z * data.w1 + v2.z * data.w2 + v3.z * data.w3;
+			if (current_z > 0.01f) {
+				current_z = 1.0f / current_z;
+				if (current_z > global_graphic_context.Zbuffer[pixel_i]) {
+					global_graphic_context.Zbuffer[pixel_i] = current_z;
+					byte color = sprogram->m_fshader(&data, pixel_i, sprogram->m_funiforms);
+					set_pixeli(pixel_i, color);
+				}
+			}
 		}
 		return;
 	} else {
 		float weight = 0.0f;
 		for (int i = 0; i <= params.absolutexdist; i++) {
 			weight += params.deltaY;
-			u32 pixel_i = get_index((vec2i) {begin.x + i * params.xdir, (int) roundf(begin.y + weight)});
-			byte color = sprogram->m_fshader(pixel_i, sprogram->m_funiforms);
-			set_pixeli(pixel_i, color);
+			vec2i p = (vec2i) {begin.x + i * params.xdir, (int) roundf(begin.y + weight)};
+			u32 pixel_i = get_index(p);
+
+			get_barycentric(v1.point, v2.point, v3.point, p, &data.w1, &data.w2, &data.w3);
+			number current_z = v1.z * data.w1 + v2.z * data.w2 + v3.z * data.w3;
+			if (current_z > 0.01f) {
+				current_z = 1.0f / current_z;
+				if (current_z > global_graphic_context.Zbuffer[pixel_i]) {
+					global_graphic_context.Zbuffer[pixel_i] = current_z;
+					byte color = sprogram->m_fshader(&data, pixel_i, sprogram->m_funiforms);
+					set_pixeli(pixel_i, color);
+				}
+			}
 		}
 	}
 }
 
-static void draw_triangle(const vec2i v1, const vec2i v2, const vec2i v3, const shader_program *sprogram) {
-	vec2i verts[3] = {v1, v2, v3};
+static void draw_triangle(const projected_vectex_t v1, const projected_vectex_t v2, const projected_vectex_t v3,
+						  const shader_program *sprogram) {
+	projected_vectex_t proj_verts[3] = {v1, v2, v3};
+	vec2i verts[3] = {v1.point, v2.point, v3.point};
+	vec2f uvs[3] = {v1.uv, v2.uv, v3.uv};
 	//sorting by y
-	if (verts[0].y > verts[1].y) {
+	if (proj_verts[0].point.y > proj_verts[1].point.y) {
 		SWAP(verts, 0, 1);
+		SWAP(proj_verts, 0, 1);
+		SWAP(uvs, 0, 1);
 	}
-	if (verts[1].y > verts[2].y) {
+	if (proj_verts[1].point.y > proj_verts[2].point.y) {
 		SWAP(verts, 1, 2);
+		SWAP(proj_verts, 1, 2);
+		SWAP(uvs, 1, 2);
 	}
 	if (verts[0].y > verts[1].y) {
 		SWAP(verts, 0, 1);
+		SWAP(proj_verts, 0, 1);
+		SWAP(uvs, 0, 1);
 	}
 
 	const vec2i top = verts[0], middle = verts[1], bottom = verts[2];
+	const vec2f topuv = uvs[0], middleuv = uvs[1], bottomuv = uvs[2];
+	const projected_vectex_t top_proj = {top, proj_verts[0].z, topuv},
+							 middle_proj = {middle, proj_verts[1].z, middleuv},
+							 bottom_proj = {bottom, proj_verts[2].z, bottomuv};
+
 
 	const line_params longest = get_line_params(top, bottom),
 					  from_top_to_middle = get_line_params(top, middle),
@@ -176,14 +233,14 @@ static void draw_triangle(const vec2i v1, const vec2i v2, const vec2i v3, const 
 			bottom_w += from_middle_to_bottom.deltaX;
 			bottom_line_pixel = (vec2i) {(int) roundf(middle.x + bottom_w), middle.y + sec_iter * from_middle_to_bottom.ydir};
 
-			draw_line_shaded(longest_line_pixel, bottom_line_pixel, sprogram);
+			draw_line_shaded(longest_line_pixel, bottom_line_pixel, sprogram, top_proj, middle_proj, bottom_proj);
 			sec_iter++;
 		} else {
 			is_reached_middle = iter == from_top_to_middle.absoluteydist;
 
 			middle_w += from_top_to_middle.deltaX;
 			middle_line_pixel = (vec2i) {(int) roundf(top.x + middle_w), top.y + iter * from_top_to_middle.ydir};
-			draw_line_shaded(longest_line_pixel, middle_line_pixel, sprogram);
+			draw_line_shaded(longest_line_pixel, middle_line_pixel, sprogram, top_proj, middle_proj, bottom_proj);
 		}
 	}//m_fshader(u32 coord, global_graphic_context.current_program->m_funiforms);
 }
@@ -193,13 +250,16 @@ void gc_render_buffer() {
 		size_t point_count = global_graphic_context.current_vbuffer->len;
 		u16 stride = global_graphic_context.current_vbuffer->stride;
 
-		vec2i points[point_count];
+		projected_vectex_t points[point_count];
 		for (int i = 0; i < point_count; i++) {
 
-			vec3 point = global_graphic_context.current_vbuffer->points[i];
-			vec3 vpoint = global_graphic_context.current_program->m_vshader(point, global_graphic_context.current_program->m_vuniforms);
+			vertex_t vertex = global_graphic_context.current_vbuffer->points[i];
+			vertex_t vpoint = global_graphic_context.current_program->m_vshader(vertex, global_graphic_context.current_program->m_vuniforms);
 
-			vec2f projected_point = project(vpoint);
+			number z_val = vpoint.point.z;
+			if (fabs(z_val) < 0.01f) z_val = 0.01f;
+
+			vec2f projected_point = project(vpoint.point);
 
 			projected_point.x = (projected_point.x + 1) / 2.0f;
 			projected_point.y = (projected_point.y + 1) / 2.0f;
@@ -207,11 +267,23 @@ void gc_render_buffer() {
 			projected_point.y = 1.0f - projected_point.y;
 			projected_point.x *= VRAM_W;
 			projected_point.y *= VRAM_H;
-			points[i].x = (u16) roundf(projected_point.x);
-			points[i].y = (u16) roundf(projected_point.y);
+
+			if (projected_point.x < 0) projected_point.x = 0;
+			if (projected_point.x >= VRAM_W) projected_point.x = VRAM_W - 1;
+			if (projected_point.y < 0) projected_point.y = 0;
+			if (projected_point.y >= VRAM_H) projected_point.y = VRAM_H - 1;
+
+
+			points[i].point.x = (u16) roundf(projected_point.x);
+			points[i].point.y = (u16) roundf(projected_point.y);
+			points[i].uv = vpoint.uv;
+			points[i].z = z_val;
 		}
 
-		for (int i = 0; i < point_count - 3; i += stride) {
+		for (int i = 0; i < point_count; i += 3) {
+			if (points[i].z < 0.1f || points[i + 1].z < 0.1f || points[i + 2].z < 0.1f) {
+				continue;
+			}
 			draw_triangle(points[i], points[1 + i], points[2 + i], global_graphic_context.current_program);
 		}
 	}
@@ -219,4 +291,50 @@ void gc_render_buffer() {
 void gc_swap_buffer() {
 	memcpy(global_graphic_context.vram, global_graphic_context.double_buffer, VRAM_SIZE);
 	memset(global_graphic_context.double_buffer, 0, VRAM_SIZE);
+	memset(global_graphic_context.Zbuffer, 0.0f, VRAM_SIZE * sizeof(number));
+}
+
+void get_barycentric(const vec2i v1, const vec2i v2, const vec2i v3, const vec2i p,
+					 number *w1, number *w2, number *w3) {
+	number det = (v2.y - v3.y) * (v1.x - v3.x) + (v3.x - v2.x) * (v1.y - v3.y);
+
+	*w1 = ((v2.y - v3.y) * (p.x - v3.x) + (v3.x - v2.x) * (p.y - v3.y)) / det;
+	*w2 = ((v3.y - v1.y) * (p.x - v3.x) + (v1.x - v3.x) * (p.y - v3.y)) / det;
+	*w3 = 1.0f - *w1 - *w2;
+}
+
+byte sample_texture(const vec2f uv1, const vec2f uv2, const vec2f uv3,
+					float w1, float w2, float w3,
+					const texture *txt) {
+	float u = w1 * uv1.x + w2 * uv2.x + w3 * uv3.x;
+	float v = w1 * uv1.y + w2 * uv2.y + w3 * uv3.y;
+	u = 1.0f - u;
+	v = 1.0f - v;
+
+
+	int tx = (int) (u * (txt->w - 1)) % txt->w;
+	int ty = (int) (v * (txt->h - 1)) % txt->h;
+	return txt->pixels[ty * txt->w + tx];
+}
+
+texture load_texture(const char *path) {
+	texture res = {0};
+
+	FILE *file = fopen(path, "rb");
+	if (file) {
+		fread(&res.w, sizeof(byte), 1, file);
+		fread(&res.h, sizeof(byte), 1, file);
+		size_t data_size = res.w * res.h * sizeof(byte);
+		res.pixels = malloc(data_size);
+		fread(res.pixels, 1, data_size, file);
+	} else {
+		printf("Failed to load texture: %s\n", path);
+		exit(-1);
+	}
+
+	return res;
+}
+
+void destroy_texture(texture *self) {
+	free(self->pixels);
 }
