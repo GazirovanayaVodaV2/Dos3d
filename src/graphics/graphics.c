@@ -254,6 +254,7 @@ void gc_render_buffer() {
 		for (int i = 0; i < point_count; i++) {
 
 			vertex_t vertex = global_graphic_context.current_vbuffer->points[i];
+
 			vertex_t vpoint = global_graphic_context.current_program->m_vshader(vertex, global_graphic_context.current_program->m_vuniforms);
 
 			number z_val = vpoint.point.z;
@@ -337,4 +338,51 @@ texture load_texture(const char *path) {
 
 void destroy_texture(texture *self) {
 	free(self->pixels);
+}
+
+void create_lens(camera_lens *lens) {
+	midentity(&lens->projection);
+	float fov_rad = lens->fov * (3.14159f / 180.0f);
+	float scale = tanf(fov_rad / 2);
+	lens->projection[0] = scale;
+	lens->projection[5] = scale;
+	lens->projection[10] = -(lens->far_cliping + lens->near_cliping) /
+						   (lens->far_cliping - lens->near_cliping);
+	lens->projection[11] = -1.0f;
+	lens->projection[14] = -(2.0f * lens->far_cliping * lens->near_cliping) /
+						   (lens->far_cliping - lens->near_cliping);
+	lens->projection[15] = 0.0f;
+}
+
+void camera_lookat(camera *self) {
+	//basis
+	vec3 f = normalize((vec3) {self->target.x - self->pos.x,
+							   self->target.y - self->pos.y,
+							   self->target.z - self->pos.z});
+	vec3 r = normalize(cross(self->upvector, f));
+	vec3 u = cross(f, r);
+
+	// 1-й СТОЛБЕЦ
+	self->view[0] = r.x;
+	self->view[1] = u.x;
+	self->view[2] = f.x;
+	self->view[3] = 0.0f;
+
+	// 2-й СТОЛБЕЦ
+	self->view[4] = r.y;
+	self->view[5] = u.y;
+	self->view[6] = f.y;
+	self->view[7] = 0.0f;
+
+	// 3-й СТОЛБЕЦ
+	self->view[8] = r.z;
+	self->view[9] = u.z;
+	self->view[10] = f.z;
+	self->view[11] = 0.0f;
+
+	// 4-й СТОЛБЕЦ
+	self->view[12] = -dot(r, self->pos);
+	self->view[13] = -dot(u, self->pos);
+	self->view[14] = -dot(f, self->pos);
+	self->view[15] = 1.0f;
 }

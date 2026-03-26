@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "../utils/utils.h"
 #include "../vec3/vec3.h"
+#include "../matrix/matrix.h"
 
 #define VRAM_SIZE 64000
 #define VRAM_W 320
@@ -64,6 +65,20 @@ typedef struct graphic_context {
 	vertex_buffer *current_vbuffer;
 	const shader_program *current_program;
 } graphic_context;
+
+typedef struct camera_lens {
+	float fov, aspect, near_cliping, far_cliping;
+	matrix projection;
+} camera_lens;
+
+typedef struct camera {
+	vec3 pos, target, upvector;
+	camera_lens lens;
+	matrix view;
+} camera;
+
+void create_lens(camera_lens *lens);
+void camera_lookat(camera *self);
 
 extern graphic_context global_graphic_context;
 
