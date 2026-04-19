@@ -6,9 +6,9 @@
 #include <bios.h>
 #include <dpmi.h>
 #include <stdbool.h>
-#include "../utils/utils.h"
-#include "../vec3/vec3.h"
-#include "../matrix/matrix.h"
+#include "../utils/utils.hpp"
+#include "../vec3/vec3.hpp"
+#include "../matrix/matrix.hpp"
 
 #define VRAM_SIZE 64000
 #define VRAM_W 320

@@ -1,5 +1,5 @@
-#include "matrix/matrix.h"
-#include "vec3/vec3.h"
+#include "matrix/matrix.hpp"
+#include "vec3/vec3.hpp"
 #include <bios.h>
 #include <dpmi.h>
 #include <sys/nearptr.h>
@@ -8,9 +8,12 @@
 #include <conio.h>
 
 #define GDB_IMPLEMENTATION
-#include "gdbstub.h"
 
-#include "graphics/graphics.h"
+extern "C" {
+#include "gdbstub.h"
+}
+
+#include "graphics/graphics.hpp"
 
 vertex_t triangle_vertex_test(vertex_t point, const void *uniforms) {
 	return point;
@@ -30,9 +33,8 @@ vertex_t cube_test(vertex_t point, const void *uniforms) {
 	const camera *cam = cuniform->cam;
 
 	matrix res;
-	mmult(&res, cam->lens.projection, cam->view);
-	mmult(&res, res, cuniform->model);
-	vec3 v = mmult_vec(res, point.point);
+	res = cam->lens.projection * cam->view * cuniform->model;
+	vec3 v = res.project(point.point);
 	return (vertex_t) {v, point.uv};
 }
 
@@ -57,14 +59,14 @@ int main(void) {
 	init_graphics();
 
 	camera cam = {
+			.pos = {0.5f, 0, -3},
+			.target = {0, 0, 0},
+			.upvector = {0, 2, 0},
 			.lens = {
 					45,
 					(float) VRAM_W / VRAM_H,
 					0.01f,
-					100.0f},
-			.pos = {1.0f, 0, -2},
-			.target = {0},
-			.upvector = {0, 2, 0}};
+					100.0f}};
 
 	create_lens(&cam.lens);
 	camera_lookat(&cam);
@@ -142,12 +144,7 @@ int main(void) {
 	//														   triangle_fragment_test, NULL);
 
 	struct cube_vuniform cube_vuniform = {
-			.model = {
-					1.0f, 0.0f, 0.0f, 0.0f,// X-axis (Right)
-					0.0f, 1.0f, 0.0f, 0.0f,// Y-axis (Up)
-					0.0f, 0.0f, 1.0f, 0.0f,// Z-axis (Forward)
-					0.0f, 0.0f, 0.0f, 1.0f // Translation (0,0,0) и W=1
-			},
+			.model = matrix(),
 			.cam = &cam};
 	struct cube_funiform cube_funiform = {
 			&bricks};
@@ -161,17 +158,13 @@ int main(void) {
 
 	while (!kbhit()) {
 		gc_render_buffer();
-		for (int i = 0; i < bricks.h * bricks.w; i++) {
-			int x = i % bricks.w;
-			int y = i / bricks.w;
-			int index = y * VRAM_W + x;
 
-			cam.pos.z += 0.0001;
-			//cam.target = cam.pos;
-			//cam.target.z = cam.pos.z + 1.0f;
-			camera_lookat(&cam);
-			global_graphic_context.double_buffer[index] = bricks.pixels[i];
-		}
+		cam.pos.z -= 0.1;
+		cam.pos.x += 0.1;
+		cam.pos.y += 0.1;
+		cam.target = cam.pos + vec3{-0.5, 0, 1};
+		camera_lookat(&cam);
+
 		gc_swap_buffer();
 
 

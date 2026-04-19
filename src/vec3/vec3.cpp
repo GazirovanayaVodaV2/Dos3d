@@ -1,6 +1,38 @@
 #include <math.h>
 
-#include "vec3.h"
+#include "vec3.hpp"
+
+vec3 vec3::operator+(vec3 a) {
+	return {
+			this->x + a.x,
+			this->y + a.y,
+			this->z + a.z,
+	};
+}
+
+vec3 vec3::operator-(vec3 a) {
+	return {
+			this->x - a.x,
+			this->y - a.y,
+			this->z - a.z,
+	};
+}
+
+vec3 vec3::operator*(vec3 a) {
+	return cross(*this, a);
+}
+
+vec3 vec3::normalize() {
+	return ::normalize(*this);
+}
+
+vec2f vec3::project() {
+	return ::project(*this);
+}
+
+float vec3::dot(vec3 a) {
+	return ::dot(*this, a);
+}
 
 float dot(vec3 a, vec3 b) {
 	return a.x * b.x + a.y * b.y + a.z * b.z;

@@ -1,13 +1,12 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <sys/nearptr.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <conio.h>
 #include <math.h>
 
-#include "graphics.h"
-#include "../vec3/vec3.h"
+#include "graphics.hpp"
+#include "../vec3/vec3.hpp"
 #include "float.h"
 #include "string.h"
 
@@ -63,7 +62,7 @@ static inline u32 get_index(const vec2i pos) {
 }
 
 static inline void set_pixel(const vec2i pos, const byte color) {
-	if (pos.y < VRAM_H && pos.x < VRAM_W) {
+	if (pos.x >= 0 && pos.y >= 0 && pos.x < VRAM_W && pos.y < VRAM_H) {
 		const u32 screen_point = get_index(pos);
 		global_graphic_context.double_buffer[screen_point] = color;
 	}
@@ -109,19 +108,19 @@ void draw_line(const vec2i begin, const vec2i end, const byte color) {
 
 	if (params.isvertical) {
 		for (int i = 0; i <= params.absoluteydist; i++) {
-			set_pixel((vec2i) {begin.x, begin.y + i * params.ydir}, color);
+			set_pixel((vec2i) {begin.x, (i16) (begin.y + i * params.ydir)}, color);
 		}
 		return;
 	} else if (params.ishorizontal) {
 		for (int i = 0; i <= params.absolutexdist; i++) {
-			set_pixel((vec2i) {begin.x + i * params.xdir, begin.y}, color);
+			set_pixel((vec2i) {(i16) (begin.x + i * params.xdir), begin.y}, color);
 		}
 		return;
 	} else {
 		float weight = 0.0f;
 		for (int i = 0; i <= params.absolutexdist; i++) {
 			weight += params.deltaY;
-			set_pixel((vec2i) {begin.x + i * params.xdir, (int) roundf(begin.y + weight)}, color);
+			set_pixel((vec2i) {(i16) (begin.x + i * params.xdir), (i16) roundf(begin.y + weight)}, color);
 		}
 	}
 }
@@ -135,7 +134,7 @@ static void draw_line_shaded(const vec2i begin, const vec2i end, const shader_pr
 	data.uv[2] = v3.uv;
 	if (params.isvertical) {
 		for (int i = 0; i <= params.absoluteydist; i++) {
-			vec2i p = (vec2i) {begin.x, begin.y + i * params.ydir};
+			vec2i p = (vec2i) {begin.x, (i16) (begin.y + i * params.ydir)};
 			u32 pixel_i = get_index(p);
 
 			get_barycentric(v1.point, v2.point, v3.point, p, &data.w1, &data.w2, &data.w3);
@@ -152,7 +151,7 @@ static void draw_line_shaded(const vec2i begin, const vec2i end, const shader_pr
 		return;
 	} else if (params.ishorizontal) {
 		for (int i = 0; i <= params.absolutexdist; i++) {
-			vec2i p = (vec2i) {begin.x + i * params.xdir, begin.y};
+			vec2i p = (vec2i) {(i16) (begin.x + i * params.xdir), begin.y};
 			u32 pixel_i = get_index(p);
 
 			get_barycentric(v1.point, v2.point, v3.point, p, &data.w1, &data.w2, &data.w3);
@@ -171,7 +170,7 @@ static void draw_line_shaded(const vec2i begin, const vec2i end, const shader_pr
 		float weight = 0.0f;
 		for (int i = 0; i <= params.absolutexdist; i++) {
 			weight += params.deltaY;
-			vec2i p = (vec2i) {begin.x + i * params.xdir, (int) roundf(begin.y + weight)};
+			vec2i p = (vec2i) {(i16) (begin.x + i * params.xdir), (i16) roundf(begin.y + weight)};
 			u32 pixel_i = get_index(p);
 
 			get_barycentric(v1.point, v2.point, v3.point, p, &data.w1, &data.w2, &data.w3);
@@ -194,6 +193,7 @@ static void draw_triangle(const projected_vectex_t v1, const projected_vectex_t 
 	vec2i verts[3] = {v1.point, v2.point, v3.point};
 	vec2f uvs[3] = {v1.uv, v2.uv, v3.uv};
 	//sorting by y
+
 	if (proj_verts[0].point.y > proj_verts[1].point.y) {
 		SWAP(verts, 0, 1);
 		SWAP(proj_verts, 0, 1);
@@ -226,12 +226,13 @@ static void draw_triangle(const projected_vectex_t v1, const projected_vectex_t 
 	for (int iter = 0, sec_iter = 0; iter < longest.absoluteydist; iter++) {
 		long_w += longest.deltaX;
 		vec2i longest_line_pixel, middle_line_pixel, bottom_line_pixel;
-		longest_line_pixel = (vec2i) {(int) roundf(top.x + long_w), top.y + iter * longest.ydir};
+		longest_line_pixel = (vec2i) {(i16) roundf(top.x + long_w), (i16) (top.y + iter * longest.ydir)};
 
 
 		if (is_reached_middle) {
 			bottom_w += from_middle_to_bottom.deltaX;
-			bottom_line_pixel = (vec2i) {(int) roundf(middle.x + bottom_w), middle.y + sec_iter * from_middle_to_bottom.ydir};
+			bottom_line_pixel = (vec2i) {(i16) roundf(middle.x + bottom_w),
+										 (i16) (middle.y + sec_iter * from_middle_to_bottom.ydir)};
 
 			draw_line_shaded(longest_line_pixel, bottom_line_pixel, sprogram, top_proj, middle_proj, bottom_proj);
 			sec_iter++;
@@ -239,7 +240,8 @@ static void draw_triangle(const projected_vectex_t v1, const projected_vectex_t 
 			is_reached_middle = iter == from_top_to_middle.absoluteydist;
 
 			middle_w += from_top_to_middle.deltaX;
-			middle_line_pixel = (vec2i) {(int) roundf(top.x + middle_w), top.y + iter * from_top_to_middle.ydir};
+			middle_line_pixel = (vec2i) {(i16) roundf(top.x + middle_w),
+										 (i16) (top.y + iter * from_top_to_middle.ydir)};
 			draw_line_shaded(longest_line_pixel, middle_line_pixel, sprogram, top_proj, middle_proj, bottom_proj);
 		}
 	}//m_fshader(u32 coord, global_graphic_context.current_program->m_funiforms);
@@ -260,7 +262,7 @@ void gc_render_buffer() {
 			number z_val = vpoint.point.z;
 			if (fabs(z_val) < 0.01f) z_val = 0.01f;
 
-			vec2f projected_point = project(vpoint.point);
+			vec2f projected_point = {vpoint.point.x, vpoint.point.y};
 
 			projected_point.x = (projected_point.x + 1) / 2.0f;
 			projected_point.y = (projected_point.y + 1) / 2.0f;
@@ -285,7 +287,7 @@ void gc_render_buffer() {
 			if (points[i].z < 0.1f || points[i + 1].z < 0.1f || points[i + 2].z < 0.1f) {
 				continue;
 			}
-			draw_triangle(points[i], points[1 + i], points[2 + i], global_graphic_context.current_program);
+			draw_triangle(points[i], points[i + 1], points[i + 2], global_graphic_context.current_program);
 		}
 	}
 }
@@ -326,7 +328,7 @@ texture load_texture(const char *path) {
 		fread(&res.w, sizeof(byte), 1, file);
 		fread(&res.h, sizeof(byte), 1, file);
 		size_t data_size = res.w * res.h * sizeof(byte);
-		res.pixels = malloc(data_size);
+		res.pixels = (byte *) malloc(data_size);
 		fread(res.pixels, 1, data_size, file);
 	} else {
 		printf("Failed to load texture: %s\n", path);
@@ -341,48 +343,49 @@ void destroy_texture(texture *self) {
 }
 
 void create_lens(camera_lens *lens) {
-	midentity(&lens->projection);
+	lens->projection.identity();
 	float fov_rad = lens->fov * (3.14159f / 180.0f);
-	float scale = tanf(fov_rad / 2);
-	lens->projection[0] = scale;
-	lens->projection[5] = scale;
-	lens->projection[10] = -(lens->far_cliping + lens->near_cliping) /
-						   (lens->far_cliping - lens->near_cliping);
-	lens->projection[11] = -1.0f;
-	lens->projection[14] = -(2.0f * lens->far_cliping * lens->near_cliping) /
-						   (lens->far_cliping - lens->near_cliping);
-	lens->projection[15] = 0.0f;
+	float scale = 1.0f / tanf(fov_rad / 2);
+	float range_inv = 1.0f / (lens->near_cliping - lens->far_cliping);
+
+	lens->projection.m_mat[0][0] = scale;
+	lens->projection.m_mat[1][1] = scale;
+	lens->projection.m_mat[2][2] = (lens->far_cliping + lens->near_cliping) * range_inv;
+	lens->projection.m_mat[2][3] = -1.0f;
+	lens->projection.m_mat[3][2] = (2.0f * lens->far_cliping * lens->near_cliping) * range_inv;
+	lens->projection.m_mat[3][3] = 0.0f;
 }
 
 void camera_lookat(camera *self) {
 	//basis
-	vec3 f = normalize((vec3) {self->target.x - self->pos.x,
-							   self->target.y - self->pos.y,
-							   self->target.z - self->pos.z});
+	vec3 f = normalize({self->pos.x - self->target.x,
+						self->pos.y - self->target.y,
+						self->pos.z - self->target.z});
+
+
 	vec3 r = normalize(cross(self->upvector, f));
+
+
 	vec3 u = cross(f, r);
 
-	// 1-й СТОЛБЕЦ
-	self->view[0] = r.x;
-	self->view[1] = u.x;
-	self->view[2] = f.x;
-	self->view[3] = 0.0f;
 
-	// 2-й СТОЛБЕЦ
-	self->view[4] = r.y;
-	self->view[5] = u.y;
-	self->view[6] = f.y;
-	self->view[7] = 0.0f;
+	self->view.m_mat[0][0] = r.x;
+	self->view.m_mat[0][1] = u.x;
+	self->view.m_mat[0][2] = f.x;
+	self->view.m_mat[0][3] = 0.0f;
 
-	// 3-й СТОЛБЕЦ
-	self->view[8] = r.z;
-	self->view[9] = u.z;
-	self->view[10] = f.z;
-	self->view[11] = 0.0f;
+	self->view.m_mat[1][0] = r.y;
+	self->view.m_mat[1][1] = u.y;
+	self->view.m_mat[1][2] = f.y;
+	self->view.m_mat[1][3] = 0.0f;
 
-	// 4-й СТОЛБЕЦ
-	self->view[12] = -dot(r, self->pos);
-	self->view[13] = -dot(u, self->pos);
-	self->view[14] = -dot(f, self->pos);
-	self->view[15] = 1.0f;
+	self->view.m_mat[2][0] = r.z;
+	self->view.m_mat[2][1] = u.z;
+	self->view.m_mat[2][2] = f.z;
+	self->view.m_mat[2][3] = 0.0f;
+
+	self->view.m_mat[3][0] = -dot(r, self->pos);
+	self->view.m_mat[3][1] = -dot(u, self->pos);
+	self->view.m_mat[3][2] = -dot(f, self->pos);
+	self->view.m_mat[3][3] = 1.0f;
 }

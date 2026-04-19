@@ -1,7 +1,7 @@
 #ifndef VEC3_H
 #define VEC3_H
 
-#include "../utils/utils.h"
+#include "../utils/utils.hpp"
 
 typedef struct vec2i {
 	i16 x, y;
@@ -15,9 +15,18 @@ typedef struct vec2f {
 	float x, y;
 } vec2f;
 
-typedef struct vec3 {
+struct vec3 {
 	number x, y, z;
-} vec3;
+
+	vec3 operator+(vec3 a);
+	vec3 operator-(vec3 a);
+	vec3 operator*(vec3 a);
+
+	vec3 normalize();
+	vec2f project();
+
+	float dot(vec3 a);
+};
 
 float dot(vec3 a, vec3 b);
 vec3 cross(vec3 a, vec3 b);
