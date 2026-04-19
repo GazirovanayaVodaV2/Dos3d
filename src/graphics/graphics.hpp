@@ -36,10 +36,6 @@ typedef struct vertex_buffer {
 	u16 stride;
 } vertex_buffer;
 
-typedef struct texture {
-	byte *pixels;
-	byte w, h;
-} texture;
 
 typedef struct data_for_fragment_shader {
 	vec2f uv[3];
@@ -114,11 +110,5 @@ void gc_swap_buffer();
 void get_barycentric(const vec2i v1, const vec2i v2, const vec2i v3, const vec2i p,
 					 number *w1, number *w2, number *w3);
 
-byte sample_texture(const vec2f uv1, const vec2f uv2, const vec2f uv3,
-					float w1, float w2, float w3,
-					const texture *txt);
-
-texture load_texture(const char *path);
-void destroy_texture(texture *self);
 
 #endif

@@ -306,42 +306,6 @@ void get_barycentric(const vec2i v1, const vec2i v2, const vec2i v3, const vec2i
 	*w3 = 1.0f - *w1 - *w2;
 }
 
-byte sample_texture(const vec2f uv1, const vec2f uv2, const vec2f uv3,
-					float w1, float w2, float w3,
-					const texture *txt) {
-	float u = w1 * uv1.x + w2 * uv2.x + w3 * uv3.x;
-	float v = w1 * uv1.y + w2 * uv2.y + w3 * uv3.y;
-	u = 1.0f - u;
-	v = 1.0f - v;
-
-
-	int tx = (int) (u * (txt->w - 1)) % txt->w;
-	int ty = (int) (v * (txt->h - 1)) % txt->h;
-	return txt->pixels[ty * txt->w + tx];
-}
-
-texture load_texture(const char *path) {
-	texture res = {0};
-
-	FILE *file = fopen(path, "rb");
-	if (file) {
-		fread(&res.w, sizeof(byte), 1, file);
-		fread(&res.h, sizeof(byte), 1, file);
-		size_t data_size = res.w * res.h * sizeof(byte);
-		res.pixels = (byte *) malloc(data_size);
-		fread(res.pixels, 1, data_size, file);
-	} else {
-		printf("Failed to load texture: %s\n", path);
-		exit(-1);
-	}
-
-	return res;
-}
-
-void destroy_texture(texture *self) {
-	free(self->pixels);
-}
-
 void create_lens(camera_lens *lens) {
 	lens->projection.identity();
 	float fov_rad = lens->fov * (3.14159f / 180.0f);

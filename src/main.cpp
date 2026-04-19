@@ -1,4 +1,5 @@
 #include "matrix/matrix.hpp"
+#include "mouse/mouse.hpp"
 #include "vec3/vec3.hpp"
 #include <bios.h>
 #include <dpmi.h>
@@ -14,6 +15,7 @@ extern "C" {
 }
 
 #include "graphics/graphics.hpp"
+#include "graphics/texture.hpp"
 
 vertex_t triangle_vertex_test(vertex_t point, const void *uniforms) {
 	return point;
@@ -41,8 +43,8 @@ vertex_t cube_test(vertex_t point, const void *uniforms) {
 byte gradient_fragment_shader(data_for_fragment_shader *data, u32 pixel, const void *uniforms) {
 	const struct cube_funiform *funiform = (const struct cube_funiform *) uniforms;
 
-	return sample_texture(data->uv[0], data->uv[1], data->uv[2],
-						  data->w1, data->w2, data->w3, funiform->txt);
+	return funiform->txt->sample(data->uv[0], data->uv[1], data->uv[2],
+								 data->w1, data->w2, data->w3);
 }
 
 byte triangle_fragment_test(u32 pixel, const void *uniforms) {
@@ -56,6 +58,7 @@ int main(void) {
 		gdb_start();
 	}
 
+	mouse_state();
 	init_graphics();
 
 	camera cam = {
@@ -83,7 +86,7 @@ int main(void) {
 			{0.5, 0, 1},
 	};*/
 
-	texture bricks = load_texture("assets/textures/bricks.vga");
+	texture bricks("assets/textures/bricks.vga");
 
 	vertex_t cube_vertices[] = {
 			// Front
@@ -159,6 +162,16 @@ int main(void) {
 	while (!kbhit()) {
 		gc_render_buffer();
 
+		if (mouse_state::left) {
+			for (int i = 0; i < bricks.h * bricks.w; i++) {
+				int x = i % bricks.w + mouse_state::x;
+				int y = i / bricks.w + mouse_state::y;
+				int index = y * VRAM_W + x;
+				global_graphic_context.double_buffer[index] = bricks.pixels[i];
+			}
+		}
+
+
 		cam.pos.z -= 0.1;
 		cam.pos.x += 0.1;
 		cam.pos.y += 0.1;
@@ -166,12 +179,10 @@ int main(void) {
 		camera_lookat(&cam);
 
 		gc_swap_buffer();
-
+		vec2i mouse_delta = mouse_state::get_delta();
 
 		gdb_checkpoint();
 	}
-
-	destroy_texture(&bricks);
 
 	quit_graphics();
 	return 0;
